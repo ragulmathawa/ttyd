@@ -49,3 +49,4 @@ build
 
 # Project files
 !init.d
+.cache

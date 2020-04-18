@@ -107,9 +107,22 @@ build() {
 	ALIAS="$2"
 	STAGE_DIR="${STAGE_ROOT}/${TARGET}"
 	BUILD_DIR="${BUILD_ROOT}/${TARGET}"
+	if [ ! -f "${BUILD_DIR}/.deps-complete" ]; then
+		echo "Dependencies not found. Install dependencies first"
+   		exit 1
+	fi
+	echo "=== ttyd: Building target ${ALIAS} (${TARGET})..."
+	export PKG_CONFIG_PATH="${STAGE_DIR}/lib/pkgconfig"
+	build_ttyd
+}
 
-	echo "=== Building target ${ALIAS} (${TARGET})..."
+build-dep(){
+	TARGET="$1"
+	ALIAS="$2"
+	STAGE_DIR="${STAGE_ROOT}/${TARGET}"
+	BUILD_DIR="${BUILD_ROOT}/${TARGET}"
 
+	echo "=== Deps: Building target ${ALIAS} (${TARGET})..."
   rm -rf ${STAGE_DIR} ${BUILD_DIR}
 	mkdir -p ${STAGE_DIR} ${BUILD_DIR}
 	export PKG_CONFIG_PATH="${STAGE_DIR}/lib/pkgconfig"
@@ -121,10 +134,27 @@ build() {
 	build_libuv
 	build_openssl
 	build_libwebsockets
-	build_ttyd
+	touch ${BUILD_DIR}/.deps-complete
 }
-
+handle-dep(){
+	case $1 in
+	i386|x86_64|aarch64|mips|mipsel)
+		build-dep $1-linux-musl $1
+		;;
+	arm)
+		build-dep arm-linux-musleabi $1
+		;;
+	armhf)
+		build-dep arm-linux-musleabihf $1
+		;;
+	*)
+    echo "usage: $0 dep i386|x86_64|arm|armhf|aarch64|mips|mipsel" && exit 1
+	esac
+}
 case $1 in
+  dep)
+   handle-dep $2
+   ;;
   i386|x86_64|aarch64|mips|mipsel)
     build $1-linux-musl $1
     ;;
@@ -135,5 +165,8 @@ case $1 in
     build arm-linux-musleabihf $1
     ;;
   *)
-    echo "usage: $0 i386|x86_64|arm|armhf|aarch64|mips|mipsel" && exit 1
+    echo "usage:" 
+    echo "      $0 dep i386|x86_64|arm|armhf|aarch64|mips|mipsel"
+    echo "      $0 i386|x86_64|arm|armhf|aarch64|mips|mipsel"
+	exit 1
 esac
